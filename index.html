@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess JS</title>
+    <link rel="stylesheet" type="text/css" href="css/index.css"/>
+</head>
+<body>
+    <div class="container container-vert">
+        <p>Chess</p>
+
+        <canvas id="board" width="416" height="416"></canvas> </br>-
+
+        <div class="container-hori" id="promotion_popdown" style="visibility: hidden;">
+            <ul>
+                <li><img src="static/bishopW.png" id="promotion_bishop"></img></li>
+                <li><img src="static/knightW.png" id="promotion_knight"></img></li>
+                <li><img src="static/queenW.png" id="promotion_queen"></img></li>
+                <li><img src="static/rookW.png" id="promotion_rook"></img></li>
+            </ul>
+        </div>
+
+        <a class="footer" target="_blank" rel="noopener noreferrer" href="https://github.com/itzreversee">by itzreversee</a>    
+
+        <div class="container container-hori">
+            <input id="fen">
+            <button id="fen_load">/\</button>
+        </div>
+    </div>
+
+    <script src="js/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+
+body {
+    background-color: #222222;
+}
+
+.container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container-vert {
+    flex-direction: column;
+}
+
+.container-hori {
+    flex-direction: row;
+}
+
+
+ul {
+    display: block;
+    list-style-type: none;
+    overflow: auto;
+}
+
+li {
+    float: left;
+}
+
+p, a {
+    color: whitesmoke;
+}
+
+canvas {
+    border: 1px solid black;
+    margin: 4px;
+}
+
+.footer {
+    font-size: x-small;
+}
+
+input {
+    min-width: 400px;
+}
