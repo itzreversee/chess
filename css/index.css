@@ -15,8 +15,15 @@ body {
 
 .container-hori {
     flex-direction: row;
+    margin-left: 10px;
+    margin-right: 10px;
 }
 
+.info {
+    margin-left: 20px;
+    margin-right: 20px;
+    font-size: 80%;
+}
 
 ul {
     display: block;

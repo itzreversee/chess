@@ -1,7 +1,7 @@
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
 
-const canvasScale = 2;
+const canvasScale = 1.2;
 canvas.width *= canvasScale;
 canvas.height *= canvasScale;
 
@@ -16,7 +16,19 @@ const promotion_bishop = document.getElementById('promotion_bishop');
 const promotion_knight = document.getElementById('promotion_knight');
 const promotion_queen = document.getElementById('promotion_queen');
 const promotion_rook = document.getElementById('promotion_rook');
-let promotion_suffix = '';
+let promotion_suffix  = ''
+
+const info_fullMoves = document.getElementById('full-moves');
+const info_halfMoves = document.getElementById('half-moves');
+const info_turn = document.getElementById('turn');
+const info_check = document.getElementById('check');
+
+let checking;
+let check = '';
+let game_state = '';
+
+let kingPosWhite = "";
+    kingPosBlack = "";
 
 const fenInput = document.getElementById('fen');
 const fenLoadBtn = document.getElementById('fen_load');
@@ -53,11 +65,10 @@ let loading = true;
 
 const startingFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-
 // -- debug
 
-let OVERRIDE_GRAB = true;
-let OVERRIDE_MOVE = true;
+let OVERRIDE_GRAB = false;
+let OVERRIDE_MOVE = false;
 
 // -- game
 
@@ -187,10 +198,10 @@ function loadFen(fen) {
     en_passant_block = pcs[3+bpcs];
 
     // halfmove clock
-    halfMoveClock = pcs[4+bpcs];
+    halfMoveClock = parseInt(pcs[4+bpcs]);
 
     // fullmove number
-    fullMoves = pcs[5+bpcs];
+    fullMoves = parseInt(pcs[5+bpcs]);
 
     if (!loading)
         draw();
@@ -209,13 +220,13 @@ function exportFen() {
                 case 'knightB': queue = 'n';  hasPiece = true; break;
                 case 'bishopB': queue = 'b';  hasPiece = true; break;
                 case 'queenB': queue = 'q';   hasPiece = true; break;
-                case 'kingB': queue = 'k';    hasPiece = true; break;
+                case 'kingB': queue = 'k';    hasPiece = true; kingPosBlack = encodePosition(j, i); break;
                 case 'pawnB': queue = 'p';    hasPiece = true; break;
                 case 'rookW': queue = 'R';    hasPiece = true; break;
                 case 'knightW': queue = 'N';  hasPiece = true; break;
                 case 'bishopW': queue = 'B';  hasPiece = true; break;
                 case 'queenW': queue = 'Q';   hasPiece = true; break;
-                case 'kingW': queue = 'K';    hasPiece = true; break;
+                case 'kingW': queue = 'K';    hasPiece = true; kingPosWhite = encodePosition(j, i); break;
                 case 'pawnW': queue = 'P';    hasPiece = true; break;
                 default:
                     if (!hasPiece)
@@ -343,23 +354,46 @@ function boardClick(event) {
         let tempPiece = tiles[eY][eX];
         if (tiles[eY][eX] !== '')
         {
+            halfMoveClock = 0;
             tempPiece = '';
+        } else {
+            halfMoveClock += 1;
         }
+
+        if (halfMoveClock >= 50) {
+            fiftyMoveEnd();
+        }
+
+        fullMoves += 1;
 
         tiles[eY][eX] = selectedPiece;
         tiles[selectedPieceY][selectedPieceX] = tempPiece;
-        if ((selectedPiece === "pawnW" || selectedPiece === "pawnB") && eY === 0)
+        if ((selectedPiece === "pawnW" && eY === 0) || (selectedPiece === "pawnB" && eY === 7))
             promotion(eX, eY);
+        [selectedPieceX, selectedPieceY] = [eX, eY];
+        getMoves();
+        
         selectedPiece = '';
+
+        changeTurn();
     }
     }
 
+    updateInfo();
     draw();
+}
+
+function changeTurn() {
+    if (turn === 'white')
+        turn = 'black';
+    else
+        turn = 'white';
 }
 
 function promotion(eX, eY) {
     LOCK_EVENTS = true;
-    promotion_suffix = turn[0].toUpperCase();
+    let t = tiles[eY][eX];
+    promotion_suffix = t.slice(-1).toUpperCase();
     promotion_popdown.style.visibility = 'visible';
     selectedPieceX = eX;
     selectedPieceY = eY;
@@ -431,118 +465,479 @@ function canMove(x, y) {
 function getMoves() {
     let moves = [];
 
+    // conditional: between my king and my enemy
+    if (selectedPiece.endsWith("W") && selectedPieceY < 7) {
+        if ((tiles[selectedPieceY + 1][selectedPieceX] === "kingW") && (tiles[selectedPieceY - 1][selectedPieceX] === "queenB"))
+            return moves;
+    } else if (selectedPiece.endsWith("B") && selectedPieceY > 0) {
+        if ((tiles[selectedPieceY - 1][selectedPieceX] === "kingB") && (tiles[selectedPieceY + 1][selectedPieceX] === "queenW"))
+            return moves;
+    }
+
+    let friendlyColor = selectedPiece.slice(-1).toUpperCase();
+    let oppColor = getOppositeColor(friendlyColor);
+
+    let uMoves = [];
+    if (check.charAt(0).toUpperCase() === friendlyColor) {
+        uMoves = uncheckMoves(friendlyColor, oppColor);
+    }
+    if (uMoves.length === 0) {
+        check = '';
+    }
+
     // pawn white
     if (selectedPiece === "pawnW") {
-        if (selectedPieceY > 0) {
-            if (tiles[selectedPieceY - 1][selectedPieceX] === "")
-                moves.push( (selectedPieceX << 8) | (selectedPieceY - 1) );
-            if (selectedPieceX > 0)
-                if (tiles[selectedPieceY - 1][selectedPieceX - 1].endsWith("B"))
-                    moves.push( ((selectedPieceX - 1) << 8) | (selectedPieceY - 1) );
-            if (selectedPieceX < boardSize - 1)
-                if (tiles[selectedPieceY - 1][selectedPieceX + 1].endsWith("B"))
-                    moves.push( ((selectedPieceX + 1) << 8) | (selectedPieceY - 1) );
-
-        }
-        if (selectedPieceY == 6) {
-            if (tiles[selectedPieceY - 2][selectedPieceX] === "")
-                moves.push( (selectedPieceX << 8) | (selectedPieceY - 2));
-        }
+        moves = moves.concat(_getMovesPawnWhite(selectedPieceX, selectedPieceY, friendlyColor, oppColor));
     }
-    // rook white
-    else if (selectedPiece === "rookW") {
-        for (let y = selectedPieceY + 1; y < boardSize; y++){
-            if (y > 7)
-                break;
-            if (!(tiles[y][selectedPieceX].endsWith("W"))) {
-                moves.push((selectedPieceX << 8) | y);
-                if (tiles[y][selectedPieceX].endsWith("B"))
-                    break;
-            } else if (tiles[y][selectedPieceX].endsWith("W"))
-                break;
-        }
-        for (let y = selectedPieceY - 1; y < boardSize; y--){
-            if (y < 0)
-                break;
-            if (!(tiles[y][selectedPieceX].endsWith("W"))) {
-                moves.push((selectedPieceX << 8) | y);
-                if (tiles[y][selectedPieceX].endsWith("B"))
-                    break;
-            } else if (tiles[y][selectedPieceX].endsWith("W"))
-                break;
-        }
-        for (let x = selectedPieceX - 1; x < boardSize; x--){
-            if (x < 0)
-                break;
-            if (!(tiles[selectedPieceY][x].endsWith("W"))) {
-                moves.push((x << 8) | selectedPieceY);
-                if (tiles[selectedPieceY][x].endsWith("B"))
-                    break;
-            } else if (tiles[selectedPieceY][x].endsWith("W"))
-                break;
-        }
-        for (let x = selectedPieceX + 1; x < boardSize; x++){
-            if (x > 7)
-                break;
-            if (!(tiles[selectedPieceY][x].endsWith("W"))) {
-                moves.push((x << 8) | selectedPieceY);
-                if (tiles[selectedPieceY][x].endsWith("B"))
-                    break;
-            } else if (tiles[selectedPieceY][x].endsWith("W"))
-                break;
-        }
+    // pawn black
+    else if (selectedPiece === "pawnB") {
+        moves = moves.concat(_getMovesPawnBlack(selectedPieceX, selectedPieceY, friendlyColor, oppColor));
     }
-    else if (selectedPiece === "knightW") {
+    // rook
+    else if (selectedPiece.startsWith("rook")) {
+        moves = moves.concat(_getMovesRook(selectedPieceX, selectedPieceY, friendlyColor, oppColor));
+    }
+    // knight
+    else if (selectedPiece.startsWith("knight")) {
         // left
-        if (selectedPieceX > 1 && selectedPieceY > 0)
-            if (!(tiles[selectedPieceY-1][selectedPieceX-2].endsWith("W")))
-                moves.push((selectedPieceX - 2 << 8) | selectedPieceY - 1);
-        if (selectedPieceX > 0 && selectedPieceY > 1)
-            if (!(tiles[selectedPieceY-2][selectedPieceX-1].endsWith("W")))
-                moves.push((selectedPieceX - 1 << 8) | selectedPieceY - 2);
-        if (selectedPieceX > 1 && selectedPieceY < 7)
-            if (!(tiles[selectedPieceY+1][selectedPieceX-2].endsWith("W")))
-                moves.push((selectedPieceX - 2 << 8) | selectedPieceY + 1);
-        if (selectedPieceX > 0 && selectedPieceY < 6)
-            if (!(tiles[selectedPieceY+2][selectedPieceX-1].endsWith("W")))
-                moves.push((selectedPieceX - 1 << 8) | selectedPieceY + 2);
-        // right
-        if (selectedPieceX < 6 && selectedPieceY > 0)
-            if (!(tiles[selectedPieceY-1][selectedPieceX+2].endsWith("W")))
-                moves.push((selectedPieceX + 2 << 8) | selectedPieceY - 1);
-        if (selectedPieceX < 7 && selectedPieceY > 1)
-            if (!(tiles[selectedPieceY-2][selectedPieceX+1].endsWith("W")))
-                moves.push((selectedPieceX + 1 << 8) | selectedPieceY - 2);
-        if (selectedPieceX < 6 && selectedPieceY < 7)
-            if (!(tiles[selectedPieceY+1][selectedPieceX+2].endsWith("W")))
-                moves.push((selectedPieceX + 2 << 8) | selectedPieceY + 1);
-        if (selectedPieceX < 7 && selectedPieceY < 6)
-            if (!(tiles[selectedPieceY+2][selectedPieceX+1].endsWith("W")))
-                moves.push((selectedPieceX + 1 << 8) | selectedPieceY + 2);
+        moves = moves.concat(_getMovesKnight(selectedPieceX, selectedPieceY, friendlyColor, oppColor));
+    }
+    // bishop
+    else if (selectedPiece.startsWith("bishop")) {
+        moves = moves.concat(_getMovesBishop(selectedPieceX, selectedPieceY, friendlyColor, oppColor));
+    }
+    // queen
+    else if (selectedPiece.startsWith("queen")) {
+        moves = moves.concat(_getMovesQueen(selectedPieceX, selectedPieceY, friendlyColor, oppColor));
+    }
+    // king
+    else if (selectedPiece.startsWith("king")) {
+        moves = moves.concat(_getMovesKing(selectedPieceX, selectedPieceY, friendlyColor, oppColor));
     }
 
-    // filter out king
+    // filter out to king and mark checks
+    let anyCheck = false;
     moves.forEach((element) => {
-        let mX = element >> 8;
-            mY = element  & 0xFF;
-        if (tiles[mY][mX].startsWith("king")) {
-            const index = moves.indexOf(element);
-            moves.splice(index, 1);
+        let index;
+        let [kWX, kWY] = decodePosition(kingPosWhite);
+        let [kBX, kBY] = decodePosition(kingPosBlack);
+        let [mPX, mPY] = decodePosition(element);
+        //console.log(`${decodePosition(kingPosWhite)}; ${decodePosition(kingPosBlack)} :: ${decodePosition(element)}`)
+        if (mPX == kWX && mPY == kWY) {
+            anyCheck = true;
+            checking = encodePosition(mPX, mPY);
+            check = 'white';
+            moves.splice(moves.indexOf(element), 1);
+        } else if (mPX == kBX && mPY == kBY) {
+            anyCheck = true;
+            checking = encodePosition(mPX, mPY);
+            check = 'black';
+            moves.splice(moves.indexOf(element), 1);
         }
     });
+
+    if (!anyCheck) {
+        checkForCheck(friendlyColor, oppColor);
+    }
+
+    if (check.charAt(0).toUpperCase() === friendlyColor) {
+        moves = arrayIntersect(moves, uMoves);
+    }
+
+    //console.log(`${check}; ${checking} -> ${decodePosition(checking)}`);
 
     return moves;
 }
 
+function _getMovesPawnWhite(pX, pY, friendlyColor, oppColor) {
+    let moves = [];
+    if (pY > 0) {
+        if (tiles[pY - 1][pX] === "")
+            moves.push(encodePosition(pX, pY - 1));
+        if (pX > 0)
+            if (tiles[pY - 1][pX - 1].endsWith("B"))
+                moves.push(encodePosition(pX - 1, pY - 1));
+        if (pX < boardSize - 1)
+            if (tiles[pY - 1][pX + 1].endsWith("B"))
+                moves.push(encodePosition(pX + 1, pY - 1));
+    }
+    if (pY == 6) {
+        if (tiles[pY - 2][pX] === "")
+            moves.push(encodePosition(pX, pY - 2));
+    }
+    return moves;
+}
+
+function _getMovesPawnBlack(pX, pY, friendlyColor, oppColor) {
+    let moves = [];
+    if (pY < 7) {
+        if (tiles[pY + 1][pX] === "")
+            moves.push(encodePosition(pX, pY + 1));
+        if (pX > 0)
+            if (tiles[pY + 1][pX - 1].endsWith("W"))
+                moves.push(encodePosition(pX - 1, pY + 1));
+        if (pX < boardSize - 1)
+            if (tiles[pY + 1][pX + 1].endsWith("W"))
+                moves.push(encodePosition(pX + 1, pY + 1));
+
+    }
+    if (pY == 1) {
+        if (tiles[pY + 2][pX] === "")
+            moves.push(encodePosition(pX, pY + 2));
+    }
+    return moves;
+}
+
+function _getMovesRook(pX, pY, friendlyColor, oppColor) {
+    let moves = [];
+    for (let y = pY + 1; y < boardSize; y++){
+        if (y > 7)
+            break;
+        if (!(tiles[y][pX].endsWith(friendlyColor))) {
+            moves.push((pX << 8) | y);
+            if (tiles[y][pX].endsWith(oppColor))
+                break;
+        } else if (tiles[y][pX].endsWith(friendlyColor))
+            break;
+    }
+    for (let y = pY - 1; y < boardSize; y--){
+        if (y < 0)
+            break;
+        if (!(tiles[y][pX].endsWith(friendlyColor))) {
+            moves.push((pX << 8) | y);
+            if (tiles[y][pX].endsWith(oppColor))
+                break;
+        } else if (tiles[y][pX].endsWith(friendlyColor))
+            break;
+    }
+    for (let x = pX - 1; x < boardSize; x--){
+        if (x < 0)
+            break;
+        if (!(tiles[pY][x].endsWith(friendlyColor))) {
+            moves.push((x << 8) | pY);
+            if (tiles[pY][x].endsWith(oppColor))
+                break;
+        } else if (tiles[pY][x].endsWith(friendlyColor))
+            break;
+    }
+    for (let x = pX + 1; x < boardSize; x++){
+        if (x > 7)
+            break;
+        if (!(tiles[pY][x].endsWith(friendlyColor))) {
+            moves.push((x << 8) | pY);
+            if (tiles[pY][x].endsWith(oppColor))
+                break;
+        } else if (tiles[pY][x].endsWith(friendlyColor))
+            break;
+    }
+    return moves;
+}
+
+function _getMovesKnight(pX, pY, friendlyColor, oppColor) {
+    let moves = [];
+    // left
+    if (pX > 1 && pY > 0)
+        if (!(tiles[pY-1][pX-2].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX - 2, pY - 1));
+    if (pX > 0 && pY > 1)
+        if (!(tiles[pY-2][pX-1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX - 1, pY - 2));
+    if (pX > 1 && pY < 7)
+        if (!(tiles[pY+1][pX-2].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX - 2, pY + 1));
+    if (pX > 0 && pY < 6)
+        if (!(tiles[pY+2][pX-1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX - 1, pY + 2));
+    // right
+    if (pX < 6 && pY > 0)
+        if (!(tiles[pY-1][pX+2].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX + 2, pY - 1));
+    if (pX < 7 && pY > 1)
+        if (!(tiles[pY-2][pX+1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX + 1, pY - 2));
+    if (pX < 6 && pY < 7)
+        if (!(tiles[pY+1][pX+2].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX + 2, pY + 1));
+    if (pX < 7 && pY < 6)
+        if (!(tiles[pY+2][pX+1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX + 1, pY + 2));
+    return moves;
+}
+
+function _getMovesBishop(pX, pY, friendlyColor, oppColor) {
+    let moves = [];
+    for (let o = 1; o < boardSize; o++) {
+        if (pX + o > 7 || pY + o > 7)
+            break;
+        if (tiles[pY + o][pX + o] === "") 
+            moves.push(encodePosition(pX + o, pY + o));
+        else if (tiles[pY + o][pX + o].endsWith(oppColor)) {
+            moves.push(encodePosition(pX + o, pY + o));
+            break;
+        } else
+            break
+    }
+    for (let o = 1; o < boardSize; o++) {
+        if (pX - o < 0 || pY - o < 0)
+            break;
+        if (tiles[pY - o][pX - o] === "") 
+            moves.push(encodePosition(pX - o, pY - o));
+        else if (tiles[pY - o][pX - o].endsWith(oppColor)) {
+            moves.push(encodePosition(pX - o, pY - o));
+            break;
+        } else
+            break;
+    }
+    for (let o = 1; o < boardSize; o++) {
+        if (pX - o < 0 || pY + o > 7)
+            break;
+        if (tiles[pY + o][pX - o] === "")
+            moves.push(encodePosition(pX - o, pY + o));
+        else if (tiles[pY + o][pX - o].endsWith(oppColor)) {
+            moves.push(encodePosition(pX - o, pY + o));
+            break;
+        } else
+            break;
+    }
+    for (let o = 1; o < boardSize; o++) {
+        if (pX + o > 7 || pY - o < 0)
+            break;
+        if (tiles[pY - o][pX + o] === "")
+            moves.push(encodePosition(pX + o, pY - o));
+        else if (tiles[pY - o][pX + o].endsWith(oppColor)) {
+            moves.push(encodePosition(pX + o, pY - o));
+            break;
+        } else
+            break;
+    }
+    return moves;
+}
+
+function _getMovesQueen(pX, pY, friendlyColor, oppColor) {
+    let moves = [];
+    moves = moves.concat(_getMovesRook(pX, pY, friendlyColor, oppColor));
+    moves = moves.concat(_getMovesBishop(pX, pY, friendlyColor, oppColor));
+    return moves;
+}
+
+function _getMovesKing(pX, pY, friendlyColor, oppColor) {
+    let moves = [];
+    if (pY > 0)
+        if (!(tiles[pY - 1][pX].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX, pY - 1));
+    if (pY < 7)
+        if (!(tiles[pY + 1][pX].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX, pY + 1));
+    if (pX > 0)
+        if (!(tiles[pY][pX - 1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX - 1, pY));
+    if (pX < 7)
+        if (!(tiles[pY][pX + 1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX + 1, pY));
+
+        // diagonal
+    if (pY > 0 && pX > 0)
+        if (!(tiles[pY - 1][pX - 1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX - 1, pY - 1));
+    if (pY < 7 && pX < 7)
+        if (!(tiles[pY + 1][pX + 1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX + 1, pY + 1));
+    if (pY < 7 && pX > 0)
+        if (!(tiles[pY + 1][pX - 1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX - 1, pY + 1));
+    if (pY > 0 && pX < 7)
+        if (!(tiles[pY - 1][pX + 1].endsWith(friendlyColor)))
+            moves.push(encodePosition(pX + 1, pY - 1));
+
+    // filter out moves that king cannot do
+    let otherMoves = getEveryMoveOfColor(oppColor);
+
+    moves = arrayDifference(moves, otherMoves);
+
+    return moves;
+}
+
+function uncheckMoves(friendlyColor, oppColor) {
+    let threats = [];
+
+    let kingPos;
+    if (friendlyColor === "W")
+        kingPos = kingPosWhite;
+    else
+        kingPos = kingPosBlack;
+    
+    let [kX, kY] = decodePosition(kingPos);
+
+    for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+            let moves = [];
+            if (tiles[y][x].slice(-1) !== oppColor)
+                continue;
+            if (tiles[y][x] === "pawnW") {
+                moves = moves.concat(_getMovesPawnWhite(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x] === "pawnB") {
+                moves = moves.concat(_getMovesPawnBlack(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("rook")) {
+                moves = moves.concat(_getMovesRook(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("knight")) {
+                moves = moves.concat(_getMovesKnight(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("bishop")) {
+                moves = moves.concat(_getMovesBishop(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("queen")) {
+                moves = moves.concat(_getMovesQueen(x, y, friendlyColor, oppColor));
+            }
+            
+            moves.forEach(element => {
+                let [mX, mY] = decodePosition(element);
+                if (mX === kX && mY == kY) {
+                    threats += encodePosition(x, y);
+                }
+            });
+        }
+    }
+
+    return threats;
+}
+
+function checkForCheck(friendlyColor, oppColor) {
+    let kingPos;
+    if (friendlyColor === "W")
+        kingPos = kingPosWhite;
+    else
+        kingPos = kingPosBlack;
+    
+    let [kX, kY] = decodePosition(kingPos);
+
+    let anyCheck = false;
+    for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+            let moves = [];
+            if (tiles[y][x].slice(-1) !== oppColor)
+                continue;
+            if (tiles[y][x] === "pawnW") {
+                moves = moves.concat(_getMovesPawnWhite(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x] === "pawnB") {
+                moves = moves.concat(_getMovesPawnBlack(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("rook")) {
+                moves = moves.concat(_getMovesRook(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("knight")) {
+                moves = moves.concat(_getMovesKnight(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("bishop")) {
+                moves = moves.concat(_getMovesBishop(x, y, friendlyColor, oppColor));
+            } else if (tiles[y][x].startsWith("queen")) {
+                moves = moves.concat(_getMovesQueen(x, y, friendlyColor, oppColor));
+            }
+            
+            moves.forEach(element => {
+                let [mX, mY] = decodePosition(element);
+                if (mX === kX && mY == kY) {
+                    if (friendlyColor === "W")
+                        check = "white";
+                    else
+                        check = "black";
+                    anyCheck = true;
+                    return;
+                }
+            });
+            if (anyCheck)
+                break
+        }
+        if (anyCheck)
+            break;
+    }
+
+    return;
+}
+
+function getEveryMoveOfColor(c) {
+    let moves = [];
+
+    for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+            if (tiles[y][x].slice(-1) !== c)
+                continue;
+            if (tiles[y][x] === "pawnW") {
+                moves = moves.concat(_getMovesPawnWhite(x, y, c, getOppositeColor(c)));
+            } else if (tiles[y][x] === "pawnB") {
+                moves = moves.concat(_getMovesPawnBlack(x, y, c, getOppositeColor(c)));
+            } else if (tiles[y][x].startsWith("rook")) {
+                moves = moves.concat(_getMovesRook(x, y, c, getOppositeColor(c)));
+            } else if (tiles[y][x].startsWith("knight")) {
+                moves = moves.concat(_getMovesKnight(x, y, c, getOppositeColor(c)));
+            } else if (tiles[y][x].startsWith("bishop")) {
+                moves = moves.concat(_getMovesBishop(x, y, c, getOppositeColor(c)));
+            } else if (tiles[y][x].startsWith("queen")) {
+                moves = moves.concat(_getMovesQueen(x, y, c, getOppositeColor(c)));
+            }
+        }
+    }
+    
+    return moves;
+}
+
+function arrayDifference(arr1, arr2) {
+    return arr1.filter(x=>!arr2.includes(x)); 
+}
+function arrayIntersect(arr1, arr2) {
+    return arr1.filter(x=>arr2.includes(x)); 
+} 
+
 function drawPossibleMoves() {
     let possibleMoves = getMoves();
     possibleMoves.forEach((element) => {
-        let x = element >> 8;
-            y = element  & 0xFF;
+        let p = decodePosition(element);
         ctx.fillStyle = "rgba(80, 60, 120, 0.4)";
         ctx.beginPath();
-        console.log(`${x};${y}`);
-        ctx.arc((x * tileSize) + tileSize / 2, (y * tileSize) + tileSize / 2, 10, 0, 2 * Math.PI);
+        //console.log(`${x};${y}`);
+        ctx.arc((p[0] * tileSize) + tileSize / 2, (p[1] * tileSize) + tileSize / 2, 10, 0, 2 * Math.PI);
         ctx.fill();
     });
+}
+
+function encodePosition(x, y) {
+    return x << 8 | y;
+}
+
+function decodePosition(p, c) {
+    let x = p >> 8;
+        y = p  & 0xFF;
+    return [x, y];
+}
+
+function getCheckMoves() {
+    return check;
+}
+
+function getOppositeColor(c) {
+    if (c === "W")
+        return "B";
+    else if (c === "B")
+        return "W";
+    else if (c === "white")
+        return "black";
+    else if (c === "black")
+        return "white";
+}
+
+function updateInfo() {
+    info_fullMoves.innerHTML = `Full moves: ${fullMoves}`;
+    if (halfMoveClock >= 50)
+        info_halfMoves.innerHTML = `50 move rule end!`;
+    else
+        info_halfMoves.innerHTML = `Half moves: ${halfMoveClock}`;
+    info_turn.innerHTML = `${capitalizeString(turn)} turn`;
+    if (check === "")
+        info_check.innerHTML = "No Check";
+    else
+        info_check.innerHTML = `${capitalizeString(check)} check`;
+}
+
+
+function capitalizeString(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function fiftyMoveEnd() {
+    info_halfMoves.innerHTML = "50 move rule!";
+    LOCK_EVENTS = true;
 }
