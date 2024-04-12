@@ -299,7 +299,7 @@ function draw() {
                 ctx.drawImage(imageMap[tiles[i][j]], j * tileSize, i * tileSize);
             }
             
-            printLocation(i, j);
+            //printLocation(i, j);
         }
     }
     
@@ -342,7 +342,7 @@ function boardClick(event) {
         selectedPieceX = eX;
         selectedPieceY = eY;
         selectedPiece = tiles[selectedPieceY][selectedPieceX];
-        console.log(`${selectedPiece} | ${selectedPieceX};${selectedPieceY}`);
+        //console.log(`${selectedPiece} | ${selectedPieceX};${selectedPieceY}`);
     } else {
         clicked = false;
 
