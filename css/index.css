@@ -1,6 +1,6 @@
 
 body {
-    background-color: #222222;
+    background-color: #161616;
 }
 
 .container {
@@ -45,7 +45,7 @@ canvas {
 }
 
 .footer {
-    font-size: x-small;
+    font-size: small;
 }
 
 input {

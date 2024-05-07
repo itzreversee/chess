@@ -1,4 +1,4 @@
-# Chess in JavaScript
+# Chess in JavaScript | WALLPAPER ENGINE EDITION
 A chess game in pure HTML5, CSS, and JS made for fun in about 12 hours.
 
 ## What's implemented
@@ -14,6 +14,3 @@ A chess game in pure HTML5, CSS, and JS made for fun in about 12 hours.
 - [ ] En passant
 - [ ] Castling
 - [ ] Multiplayer server
-
-## Run
-Use something like python to host a local server: `python -m http.server -d . 8080`

@@ -1,7 +1,7 @@
 const canvas = document.getElementById("board");
 const ctx = canvas.getContext("2d");
 
-const canvasScale = 1.2;
+const canvasScale = 1.25;
 canvas.width *= canvasScale;
 canvas.height *= canvasScale;
 
@@ -31,15 +31,16 @@ let kingPosWhite = "";
     kingPosBlack = "";
 
 const fenInput = document.getElementById('fen');
-const fenLoadBtn = document.getElementById('fen_load');
+//const fenLoadBtn = document.getElementById('fen_load');
+const fenResetBtn = document.getElementById('fen_reset');
 
 const boardSize = 8;
 
 const tileSize = 52;
 const boardOffset = 0;
 
-const whiteTile = "rgb(240 240 240)";
-const blackTile = "rgb(160 160 160)";
+const whiteTile = "rgb(160 160 160)";
+const blackTile = "rgb(80 80 80)";
 
 let tiles = [];
 let imageMap = {};
@@ -93,7 +94,8 @@ function setup() {
     promotion_queen.addEventListener('click', _promotion_queen);
     promotion_rook.addEventListener('click', _promotion_rook);
 
-    fenLoadBtn.addEventListener('click', function() {loadFen(fenInput.value)}, false);
+    //fenLoadBtn.addEventListener('click', function() {loadFen(fenInput.value)}, false);
+    fenResetBtn.addEventListener('click', function() {loadFen(startingFEN)}, false);
 
     // preload images
     imageMap["pawnW"] = new Image();    imageMap["pawnW"].src = "static/pawnW.png";
@@ -111,7 +113,7 @@ function setup() {
     imageMap["rookB"] = new Image();    imageMap["rookB"].src = "static/rookB.png";
 
     loadFen(startingFEN);
-    
+
     setTimeout(function() {
         loading = false;
         draw();
@@ -171,7 +173,7 @@ function loadFen(fen) {
         if (y > 7)
             y = 7;
     });
-    
+
     // turn
     if (pcs[1] === "w")
         turn = 'white';
