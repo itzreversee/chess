@@ -1,0 +1,147 @@
+{
+	"contentrating" : "Everyone",
+	"description" : "Chess game on your desktop!\nCustomizable colors, scale and advanced features.\nAbility to load fen codes and view current board in fen code.\n\nWhat's not implemented: Win/Lose condition, En passant, Castling.\nChecks can be buggy, sorry.\n\nYou can also get the normal version on my GitHub -> itzreversee/chess",
+	"file" : "index.html",
+	"general" : 
+	{
+		"properties" : 
+		{
+			"advanced" : 
+			{
+				"index" : 10,
+				"order" : 110,
+				"text" : "Advanced",
+				"type" : "group",
+				"value" : ""
+			},
+			"backgroundcolor" : 
+			{
+				"index" : 3,
+				"order" : 103,
+				"text" : "Background color",
+				"type" : "color",
+				"value" : "0.06274509803921569 0.06274509803921569 0.06274509803921569"
+			},
+			"boardscale" : 
+			{
+				"fraction" : true,
+				"index" : 4,
+				"max" : 4,
+				"min" : 0.4,
+				"order" : 104,
+				"precision" : 3,
+				"step" : 0.01,
+				"text" : "Board scale",
+				"type" : "slider",
+				"value" : 1.5
+			},
+			"disablegrabcheck" : 
+			{
+				"index" : 11,
+				"order" : 111,
+				"text" : "Disable grab check",
+				"type" : "bool",
+				"value" : false
+			},
+			"disablemovecheck" : 
+			{
+				"index" : 12,
+				"order" : 112,
+				"text" : "Disable move check",
+				"type" : "bool",
+				"value" : false
+			},
+			"drawmoves" : 
+			{
+				"index" : 13,
+				"order" : 113,
+				"text" : "Draw moves",
+				"type" : "bool",
+				"value" : true
+			},
+			"fencodes" : 
+			{
+				"index" : 7,
+				"order" : 107,
+				"text" : "Below you can paste a fen code and click Load in the wallpaper to load the fen code onto the board.",
+				"type" : "group",
+				"value" : ""
+			},
+			"githubrepo" : 
+			{
+				"index" : 0,
+				"order" : 100,
+				"text" : "GitHub repo ->",
+				"type" : "textinput",
+				"value" : "itzreversee/chess"
+			},
+			"hidefencode" : 
+			{
+				"index" : 8,
+				"order" : 108,
+				"text" : "Hide fen code",
+				"type" : "bool",
+				"value" : false
+			},
+			"hidepromotioninfo" : 
+			{
+				"index" : 5,
+				"order" : 105,
+				"text" : "Hide promotion info",
+				"type" : "bool",
+				"value" : false
+			},
+			"hideselfpromo" : 
+			{
+				"index" : 6,
+				"order" : 106,
+				"text" : "Hide self promo",
+				"type" : "bool",
+				"value" : true
+			},
+			"loadfencode" : 
+			{
+				"index" : 9,
+				"order" : 109,
+				"text" : "Load fen",
+				"type" : "textinput",
+				"value" : ""
+			},
+			"schemecolor" : 
+			{
+				"order" : 0,
+				"text" : "ui_browse_properties_scheme_color",
+				"type" : "color",
+				"value" : "0 0 0"
+			},
+			"tilecolora" : 
+			{
+				"index" : 1,
+				"order" : 101,
+				"text" : "Tile color A",
+				"type" : "color",
+				"value" : "0.6274509803921569 0.6274509803921569 0.6274509803921569"
+			},
+			"tilecolorb" : 
+			{
+				"index" : 2,
+				"order" : 102,
+				"text" : "Tile color B",
+				"type" : "color",
+				"value" : "0.3137254901960784 0.3137254901960784 0.3137254901960784"
+			}
+		}
+	},
+	"preview" : "preview.jpg",
+	"ratingsex" : "none",
+	"ratingviolence" : "none",
+	"snapshotformat" : -1,
+	"snapshotoverlay" : "",
+	"tags" : [ "Game" ],
+	"title" : "Chess Game",
+	"type" : "web",
+	"version" : 1,
+	"visibility" : "public",
+	"workshopid" : "3241834212",
+	"workshopurl" : "steam://url/CommunityFilePage/3241834212"
+}
